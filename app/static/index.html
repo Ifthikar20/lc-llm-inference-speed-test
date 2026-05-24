@@ -53,8 +53,16 @@
     <label># Questions
       <input type="number" id="numText" value="5" min="1" max="20" style="width:6rem" />
     </label>
+    <label>Difficulty
+      <select id="diffText" style="font:inherit;padding:.5rem .6rem;border-radius:8px;border:1px solid #8886;background:transparent;color:inherit">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+        <option value="exam">Exam-grade</option>
+      </select>
+    </label>
     <label>Model (optional)
-      <input type="text" id="modelText" placeholder="deepseek-r1:14b" style="width:11rem" />
+      <input type="text" id="modelText" placeholder="llama3.1:8b" style="width:11rem" />
     </label>
     <button type="submit" id="goText">Generate from text</button>
   </form>
@@ -68,8 +76,16 @@
     <label># Questions
       <input type="number" id="num" value="5" min="1" max="20" style="width:6rem" />
     </label>
+    <label>Difficulty
+      <select id="diff" style="font:inherit;padding:.5rem .6rem;border-radius:8px;border:1px solid #8886;background:transparent;color:inherit">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+        <option value="exam">Exam-grade</option>
+      </select>
+    </label>
     <label>Model (optional)
-      <input type="text" id="model" placeholder="deepseek-r1:14b" style="width:11rem" />
+      <input type="text" id="model" placeholder="llama3.1:8b" style="width:11rem" />
     </label>
     <button type="submit" id="go">Generate from PDF</button>
   </form>
@@ -97,6 +113,7 @@
       const body = {
         material,
         num_questions: Number(document.getElementById("numText").value),
+        difficulty: document.getElementById("diffText").value,
       };
       const model = document.getElementById("modelText").value.trim();
       if (model) body.model = model;
@@ -167,6 +184,7 @@
       const fd = new FormData();
       fd.append("file", file);
       fd.append("num_questions", document.getElementById("num").value);
+      fd.append("difficulty", document.getElementById("diff").value);
       const model = document.getElementById("model").value.trim();
       if (model) fd.append("model", model);
 
