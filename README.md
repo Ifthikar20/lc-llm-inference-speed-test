@@ -24,7 +24,20 @@ questions, hit Generate, and answer the interactive multiple-choice cards.
 Every response includes timing/throughput `stats` (`elapsed_sec`, `eval_count`,
 `tokens_per_sec`) so you can measure real local inference speed.
 
-## Setup
+## Quick start (one command)
+
+```bash
+./run.sh
+```
+This checks Ollama is installed, starts its server, pulls the model if missing,
+sets up the Python venv, installs deps, and launches the app at
+http://localhost:8000/. Override defaults with env vars:
+```bash
+LLM_MODEL=qwen2.5:14b PORT=9000 ./run.sh
+```
+The only prerequisite is [installing Ollama](https://ollama.com/download).
+
+## Manual setup
 
 1. Install and start Ollama, then pull a model:
    ```bash
