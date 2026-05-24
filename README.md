@@ -1,17 +1,25 @@
 # Local LLM Q&A POC
 
-A minimal FastAPI service that wraps a locally-hosted LLM (via [Ollama](https://ollama.com))
-to **extract exam-style questions** from study material and **answer questions**
-against supplied context. Built to test local inference speed vs. hosted APIs.
+A minimal FastAPI service + web UI that wraps a locally-hosted LLM (via
+[Ollama](https://ollama.com)) to **extract exam-style questions** from study
+material (including **uploaded PDFs**) and **answer questions** against supplied
+context. Built to test local inference speed vs. hosted APIs.
 
 ## Architecture
 
 ```
-material ──▶ chunk ──▶ FastAPI ──▶ Ollama (localhost:11434) ──▶ model
-                          │
-                          ├─ POST /extract-questions  (material -> MCQs as JSON)
-                          └─ POST /answer             (question + context -> answer)
+PDF upload ─▶ extract text ─▶ chunk ─▶ FastAPI ─▶ Ollama (localhost:11434) ─▶ model
+   (UI)                                   │              │
+                                          │        JSON response
+                                          │              ▼
+                                          │      parsed into MCQs ─▶ rendered in UI
+                                          ├─ POST /extract-from-pdf  (PDF -> MCQs)
+                                          ├─ POST /extract-questions (text -> MCQs)
+                                          └─ POST /answer            (question+context)
 ```
+
+Open http://localhost:8000/ for the upload UI: pick a PDF, choose how many
+questions, hit Generate, and answer the interactive multiple-choice cards.
 
 Every response includes timing/throughput `stats` (`elapsed_sec`, `eval_count`,
 `tokens_per_sec`) so you can measure real local inference speed.
@@ -45,6 +53,8 @@ Override defaults with env vars (prefix `LLM_`):
 | `LLM_REQUEST_TIMEOUT` | `300`                 | Per-request timeout (s)|
 
 ## Endpoints
+
+**`POST /extract-from-pdf`** (multipart) — `file` (PDF), `num_questions`, optional `model`.
 
 **`POST /extract-questions`**
 ```json
