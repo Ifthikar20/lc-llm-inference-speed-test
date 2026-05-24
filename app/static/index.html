@@ -44,7 +44,22 @@
 </head>
 <body>
   <h1>PDF → Exam Questions</h1>
-  <p class="sub">Upload study material. It's extracted, chunked, sent to your local LLM, and the response is converted into interactive questions.</p>
+  <p class="sub">Paste study material (or upload a PDF). It's sent to your local LLM and the response is converted into interactive questions.</p>
+
+  <form id="textForm">
+    <label style="flex:1 1 100%">Paste study material (~200 words works well)
+      <textarea id="material" rows="7" placeholder="Paste a paragraph or two of study material here..." style="font:inherit;padding:.5rem .6rem;border-radius:8px;border:1px solid #8886;background:transparent;color:inherit;resize:vertical"></textarea>
+    </label>
+    <label># Questions
+      <input type="number" id="numText" value="5" min="1" max="20" style="width:6rem" />
+    </label>
+    <label>Model (optional)
+      <input type="text" id="modelText" placeholder="deepseek-r1:14b" style="width:11rem" />
+    </label>
+    <button type="submit" id="goText">Generate from text</button>
+  </form>
+
+  <p class="sub" style="text-align:center;margin:.5rem 0">— or —</p>
 
   <form id="form">
     <label>PDF file
@@ -56,7 +71,7 @@
     <label>Model (optional)
       <input type="text" id="model" placeholder="deepseek-r1:14b" style="width:11rem" />
     </label>
-    <button type="submit" id="go">Generate</button>
+    <button type="submit" id="go">Generate from PDF</button>
   </form>
 
   <div id="status"></div>
@@ -64,9 +79,41 @@
 
   <script>
     const form = document.getElementById("form");
+    const textForm = document.getElementById("textForm");
     const statusEl = document.getElementById("status");
     const results = document.getElementById("results");
     const go = document.getElementById("go");
+    const goText = document.getElementById("goText");
+
+    textForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const material = document.getElementById("material").value.trim();
+      if (!material) { statusEl.textContent = "Paste some text first."; return; }
+      const body = {
+        material,
+        num_questions: Number(document.getElementById("numText").value),
+      };
+      const model = document.getElementById("modelText").value.trim();
+      if (model) body.model = model;
+
+      goText.disabled = true;
+      results.innerHTML = "";
+      statusEl.textContent = "Querying the model… (reasoning models can take a while)";
+      try {
+        const res = await fetch("/extract-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Request failed");
+        render(data);
+      } catch (err) {
+        statusEl.textContent = "Error: " + err.message;
+      } finally {
+        goText.disabled = false;
+      }
+    });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
