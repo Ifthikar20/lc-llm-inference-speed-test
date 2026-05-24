@@ -1,4 +1,6 @@
+import json
 import time
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -7,6 +9,33 @@ from .config import settings
 
 class OllamaError(RuntimeError):
     pass
+
+
+async def generate_stream(
+    prompt: str, *, model: str | None = None
+) -> AsyncIterator[str]:
+    """Stream text deltas from Ollama's /api/generate as they're produced."""
+    payload = {
+        "model": model or settings.model,
+        "prompt": prompt,
+        "stream": True,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=settings.request_timeout) as client:
+            async with client.stream(
+                "POST", f"{settings.ollama_base_url}/api/generate", json=payload
+            ) as resp:
+                if resp.status_code != 200:
+                    await resp.aread()
+                    raise OllamaError(f"Ollama returned {resp.status_code}: {resp.text}")
+                async for line in resp.aiter_lines():
+                    if not line.strip():
+                        continue
+                    chunk = json.loads(line).get("response", "")
+                    if chunk:
+                        yield chunk
+    except httpx.HTTPError as exc:
+        raise OllamaError(f"Ollama request failed: {exc}") from exc
 
 
 async def generate(prompt: str, *, model: str | None = None) -> dict:

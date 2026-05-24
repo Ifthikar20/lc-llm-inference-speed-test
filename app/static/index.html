@@ -75,6 +75,10 @@
   </form>
 
   <div id="status"></div>
+  <details id="rawWrap" style="margin:.5rem 0" open>
+    <summary style="cursor:pointer">Model output (raw, incl. &lt;think&gt;)</summary>
+    <pre id="raw" style="white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:.6rem;font-size:.85rem"></pre>
+  </details>
   <div id="results"></div>
 
   <script>
@@ -84,6 +88,7 @@
     const results = document.getElementById("results");
     const go = document.getElementById("go");
     const goText = document.getElementById("goText");
+    const rawEl = document.getElementById("raw");
 
     textForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -98,22 +103,61 @@
 
       goText.disabled = true;
       results.innerHTML = "";
-      statusEl.textContent = "Querying the model… (reasoning models can take a while)";
+      rawEl.textContent = "";
+      statusEl.textContent = "Connecting to model…";
+
       try {
-        const res = await fetch("/extract-questions", {
+        const res = await fetch("/stream-questions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Request failed");
-        render(data);
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.detail || ("HTTP " + res.status));
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let full = "";
+        const started = performance.now();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const piece = decoder.decode(value, { stream: true });
+          full += piece;
+          rawEl.textContent = full;
+          rawEl.scrollTop = rawEl.scrollHeight;
+          const secs = ((performance.now() - started) / 1000).toFixed(0);
+          statusEl.textContent =
+            `Receiving from model… ${full.length} chars in ${secs}s (it's working!)`;
+        }
+        if (full.includes("[ERROR]")) {
+          statusEl.textContent = "Model error — see raw output above.";
+          return;
+        }
+        const questions = parseQuestions(full);
+        statusEl.textContent = questions.length
+          ? `Done. ${questions.length} questions parsed.`
+          : "Stream finished but no valid JSON questions were found — try llama3.1:8b or fewer questions.";
+        questions.forEach((item, i) => results.appendChild(card(item, i)));
       } catch (err) {
         statusEl.textContent = "Error: " + err.message;
       } finally {
         goText.disabled = false;
       }
     });
+
+    function parseQuestions(text) {
+      const s = text.indexOf("{");
+      const e = text.lastIndexOf("}");
+      if (s < 0 || e <= s) return [];
+      try {
+        const data = JSON.parse(text.slice(s, e + 1));
+        return data.questions || [];
+      } catch {
+        return [];
+      }
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();

@@ -2,14 +2,14 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import prompts
 from .chunk import chunk_text
 from .config import settings
-from .ollama_client import OllamaError, generate
+from .ollama_client import OllamaError, generate, generate_stream
 from .pdf import extract_text
 
 app = FastAPI(title="Local LLM Q&A POC", version="0.2.0")
@@ -58,6 +58,22 @@ async def extract_from_pdf(
     result = await _extract(material, num_questions, model)
     result["chars_extracted"] = len(material)
     return result
+
+
+@app.post("/stream-questions")
+async def stream_questions(req: ExtractRequest) -> StreamingResponse:
+    prompt = prompts.EXTRACT_QUESTIONS.format(
+        n=req.num_questions, material=req.material
+    )
+
+    async def gen():
+        try:
+            async for delta in generate_stream(prompt, model=req.model):
+                yield delta
+        except OllamaError as exc:
+            yield f"\n[ERROR] {exc}"
+
+    return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
 
 
 @app.post("/answer")
