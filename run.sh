@@ -47,15 +47,28 @@ fi
 ok "Model '$MODEL' is available."
 
 # 4. Python virtualenv + deps.
-if [ ! -d .venv ]; then
-  say "Creating virtualenv..."
-  python3 -m venv .venv
+# Prefer a stable Python (3.11-3.13) since bleeding-edge versions often lack
+# prebuilt wheels and force slow source builds. Fall back to python3.
+PYTHON_BIN=""
+for cand in python3.13 python3.12 python3.11 python3; do
+  if command -v "$cand" >/dev/null 2>&1; then PYTHON_BIN="$cand"; break; fi
+done
+[ -n "$PYTHON_BIN" ] || die "No Python 3 interpreter found."
+
+if [ ! -x .venv/bin/python ]; then
+  say "Creating virtualenv with $PYTHON_BIN ($("$PYTHON_BIN" --version 2>&1))..."
+  rm -rf .venv
+  "$PYTHON_BIN" -m venv .venv
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 say "Installing Python dependencies..."
 pip install -q --upgrade pip
-pip install -q -r requirements.txt
+if ! pip install -q -r requirements.txt; then
+  die "Dependency install failed. Your Python is $(python --version 2>&1). \
+If it's 3.14+, install a 3.12/3.13 (e.g. 'conda create -n llm python=3.12' or \
+'brew install python@3.12'), delete .venv, and re-run."
+fi
 ok "Dependencies installed."
 
 # 5. Launch the API (export config so the app uses the same model/URL).
