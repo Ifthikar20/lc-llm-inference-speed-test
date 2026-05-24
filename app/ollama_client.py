@@ -19,6 +19,7 @@ async def generate_stream(
         "model": model or settings.model,
         "prompt": prompt,
         "stream": True,
+        "keep_alive": settings.keep_alive,
     }
     try:
         async with httpx.AsyncClient(timeout=settings.request_timeout) as client:
@@ -44,6 +45,7 @@ async def generate(prompt: str, *, model: str | None = None) -> dict:
         "model": model or settings.model,
         "prompt": prompt,
         "stream": False,
+        "keep_alive": settings.keep_alive,
     }
     started = time.perf_counter()
     try:

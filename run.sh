@@ -10,7 +10,7 @@
 #
 set -euo pipefail
 
-MODEL="${LLM_MODEL:-deepseek-r1:14b}"
+MODEL="${LLM_MODEL:-llama3.1:8b}"
 PORT="${PORT:-8000}"
 OLLAMA_URL="${LLM_OLLAMA_BASE_URL:-http://localhost:11434}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
